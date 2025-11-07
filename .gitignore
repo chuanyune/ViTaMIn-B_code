@@ -1,0 +1,53 @@
+# Data folders
+data/
+wandb/
+observation_data/
+ckpt/
+
+
+# for local history extension
+.history/
+
+
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pth
+*.egg-info/
+dist/
+build/
+*.egg
+*.zip
+*.zarr.zip
+*.ckpt
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# Pytest
+.cache
+*.cover
+*.log
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+
+# Environment variables
+.env
+*.env
+
+# IDEs
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Operating System files
+.DS_Store
+Thumbs.db 

@@ -1,0 +1,82 @@
+task:
+  type: bimanual # single or bimanual
+  name: _1017_vb_mungbean
+  copy_raw_data: True
+
+recorder:
+  output: "./data"
+  headless: False
+  fps: 30
+  codec: "mp4v"
+  enable_tactile: True  # Set to false to only record visual cameras
+
+  camera:
+    tactile:
+      width: 640
+      height: 480
+      color: true
+      auto_exposure: 3
+      exposure: 100
+    visual:
+      width: 1920
+      height: 1080
+      color: true
+  camera_paths:
+    single:
+      left_hand_left_tactile: "/dev/video6"
+      left_hand_right_tactile: "/dev/video8"
+      left_hand_visual: "/dev/video0"
+      
+    bimanual:
+      left_hand_left_tactile: "/dev/video0"
+      left_hand_right_tactile: "/dev/video2"
+      left_hand_visual: "/dev/video8"
+      right_hand_left_tactile: "/dev/video10"
+      right_hand_right_tactile: "/dev/video6"
+      right_hand_visual: "/dev/video4"
+
+calculate_width:
+  left_hand_aruco_id:
+    left_id: 0
+    right_id: 1
+  right_hand_aruco_id:
+    left_id: 2
+    right_id: 3
+  max_workers: 4
+  cam_intrinsic_json_path: "./assets/intri_result/gopro_intrinsics_2_7k.json"
+  aruco_yaml: "./assets/aruco_config_finray.yaml"
+  nominal_z: 0.05
+
+tactile_point_extraction:
+  max_workers: 16  # Number of concurrent workers for processing tactile videos
+  fps_num_points: 256  # Fixed number of points per frame (FPS sampling always enabled)
+
+output_train_data:
+  visual_cam_latency: 0.14
+  tactile_cam_latency: 0.08
+  pose_latency: 0.01
+
+  use_inpaint_tag: False
+  tag_scale: 1.3
+  
+  min_episode_length: 10  # min frame number for one episode
+  visual_out_res: [224, 224] 
+  tactile_out_res: [224, 224]
+
+  use_tactile_img: True
+  use_tactile_pc: True 
+  
+  compression_level: 99
+  num_workers: 16
+
+  use_ee_pose: True # if the ee pose is calibrated accurately in the initial stage, set to true, then the controller doesn't need to be modified, but if it's not accurate, set to false, for debugging
+
+  tx_quest_2_ee_left_path: './assets/tf_cali_result/quest_2_ee_left_hand.npy'
+  tx_quest_2_ee_right_path: './assets/tf_cali_result/quest_2_ee_right_hand.npy'
+
+  # fisheye mask params (only for visual video)
+  use_mask: True
+  fisheye_mask_params:
+    radius: 390
+    center: null
+    fill_color: [0, 0, 0] # black 

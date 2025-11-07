@@ -1,0 +1,125 @@
+name: umi
+
+obs_down_sample_steps: 1 # 3, 1
+
+low_dim_obs_horizon: 2
+img_obs_horizon: 2
+action_horizon: 8
+ignore_proprioception: False
+
+shape_meta: &shape_meta
+  # acceptable types: rgb, tactile_img, low_dim
+  obs:
+    camera0_rgb:
+      shape: [3, 224, 224]
+      horizon: ${task.img_obs_horizon} # int
+      down_sample_steps: ${task.obs_down_sample_steps} # int
+      type: rgb
+    camera0_left_tactile:
+      shape: [3, 224, 224]
+      horizon: ${task.img_obs_horizon} # int
+      down_sample_steps: ${task.obs_down_sample_steps} # int
+      type: tactile_img
+    camera0_right_tactile:
+      shape: [3, 224, 224]
+      horizon: ${task.img_obs_horizon} # int
+      down_sample_steps: ${task.obs_down_sample_steps} # int
+      type: tactile_img
+    robot0_eef_pos:
+      shape: [3]
+      horizon: ${task.low_dim_obs_horizon} # int
+      down_sample_steps: ${task.obs_down_sample_steps} # float
+      type: low_dim
+    robot0_eef_rot_axis_angle:
+      raw_shape: [3]
+      shape: [6]
+      horizon: ${task.low_dim_obs_horizon} # int
+      down_sample_steps: ${task.obs_down_sample_steps} # float
+      type: low_dim
+      rotation_rep: rotation_6d
+    robot0_gripper_width:
+      shape: [1]
+      horizon: ${task.low_dim_obs_horizon} # int
+      down_sample_steps: ${task.obs_down_sample_steps} # float
+      type: low_dim
+    camera1_rgb:
+      shape: [3, 224, 224]
+      horizon: ${task.img_obs_horizon} # int
+      down_sample_steps: ${task.obs_down_sample_steps} # int
+      type: rgb
+    camera1_left_tactile:
+      shape: [3, 224, 224]
+      horizon: ${task.img_obs_horizon} # int
+      down_sample_steps: ${task.obs_down_sample_steps} # int
+      type: tactile_img
+    camera1_right_tactile:
+      shape: [3, 224, 224]
+      horizon: ${task.img_obs_horizon} # int
+      down_sample_steps: ${task.obs_down_sample_steps} # int
+      type: tactile_img
+    robot1_eef_pos:
+      shape: [3]
+      horizon: ${task.low_dim_obs_horizon} # int
+      down_sample_steps: ${task.obs_down_sample_steps} # float
+      type: low_dim
+    robot1_eef_rot_axis_angle:
+      raw_shape: [3]
+      shape: [6]
+      horizon: ${task.low_dim_obs_horizon} # int
+      down_sample_steps: ${task.obs_down_sample_steps} # float
+      type: low_dim
+      rotation_rep: rotation_6d
+    robot1_gripper_width:
+      shape: [1]
+      horizon: ${task.low_dim_obs_horizon} # int
+      down_sample_steps: ${task.obs_down_sample_steps} # float
+      type: low_dim
+
+    robot0_eef_pos_wrt1:
+      shape: [3]
+      horizon: ${task.low_dim_obs_horizon} # int
+      down_sample_steps: ${task.obs_down_sample_steps} # float
+      type: low_dim
+    robot0_eef_rot_axis_angle_wrt1:
+      raw_shape: [3]
+      shape: [6]
+      horizon: ${task.low_dim_obs_horizon} # int
+      down_sample_steps: ${task.obs_down_sample_steps} # float
+      type: low_dim
+    robot1_eef_pos_wrt0:
+      shape: [3]
+      horizon: ${task.low_dim_obs_horizon} # int
+      down_sample_steps: ${task.obs_down_sample_steps} # float
+      type: low_dim
+    robot1_eef_rot_axis_angle_wrt0:
+      raw_shape: [3]
+      shape: [6]
+      horizon: ${task.low_dim_obs_horizon} # int
+      down_sample_steps: ${task.obs_down_sample_steps} # float
+      type: low_dim
+
+  action: 
+    shape: [20]
+    horizon: ${task.action_horizon}
+    down_sample_steps: ${task.obs_down_sample_steps} # int
+    rotation_rep: rotation_6d
+
+task_name: &task_name umi
+pose_repr: &pose_repr
+  obs_pose_repr: relative # abs or rel
+  action_pose_repr: relative # abs or rel or delta
+
+env_runner:
+  _target_: diffusion_policy.env_runner.real_pusht_image_runner.RealPushTImageRunner
+
+dataset:
+  _target_: diffusion_policy.dataset.umi_dataset.UmiDataset
+  shape_meta: *shape_meta
+  dataset_path: /mnt/_926_vb_sensor_pick_and_place.zarr.zip
+  cache_dir: null
+  pose_repr: *pose_repr
+  action_padding: False
+  temporally_independent_normalization: False
+  repeat_frame_prob: 0.0
+  seed: 42
+  val_ratio: 0.05

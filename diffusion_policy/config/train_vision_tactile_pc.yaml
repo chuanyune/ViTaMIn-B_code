@@ -1,0 +1,179 @@
+# Vision + Tactile Point Clouds Configuration using Unified Encoder
+defaults:
+  - _self_
+  - task: umi_bimanual_pointnet  # Vision + tactile point cloud task
+
+name: vision_tactile_pc
+_target_: diffusion_policy.workspace.train_diffusion_pointnet_workspace.TrainDiffusionPointNetWorkspace
+
+task_name: ${task.name}
+shape_meta: ${task.shape_meta}
+exp_name: "vision_tactile_pc"
+
+n_action_steps: 8
+
+policy:
+  _target_: diffusion_policy.policy.diffusion_pointnet_policy.DiffusionPointNetPolicy
+  
+  shape_meta: ${shape_meta}
+  
+  noise_scheduler:
+    _target_: diffusers.DDIMScheduler
+    num_train_timesteps: 100
+    beta_start: 0.0001
+    beta_end: 0.02
+    beta_schedule: squaredcos_cap_v2
+    clip_sample: True
+    set_alpha_to_one: True
+    steps_offset: 0
+    prediction_type: epsilon
+  
+  obs_encoder:
+    _target_: diffusion_policy.model.vision.pointnet_multimodal_obs_encoder.PointNetMultiModalObsEncoder
+    shape_meta: ${shape_meta}
+    
+    # Vision model parameters
+    image_model_name: vit_base_patch16_224.dino
+    pretrained: true
+    frozen: false
+    global_pool: ''
+    
+    # Transform parameters
+    transforms:
+      - type: RandomCrop
+        ratio: 0.95
+      - _target_: torchvision.transforms.ColorJitter
+        brightness: 0.3
+        contrast: 0.4
+        saturation: 0.5
+        hue: 0.08
+    imagenet_norm: true
+    
+    # Tactile image parameters (unused for point clouds)
+    tactile_model_name: resnet18.a1_in1k
+    share_tactile_model: false
+    use_resnet_for_tactile: true
+    
+    # PointNet parameters
+    pointnet_num_points: 256                   # Number of points for PointNet
+    pointnet_feature_dim: 512                  # PointNet output feature dimension
+    pointnet_use_batch_norm: true             # Use BatchNorm in PointNet
+    share_pointnet_model: true                # Use separate PointNet encoder for each sensor
+    
+    # PointNet Data Augmentation parameters (optimized for edge detection tactile sensors)
+    pointnet_use_augmentation: true           # Enable data augmentation
+    pointnet_aug_rotation: true               # Z-axis rotation (models object orientation changes)
+    pointnet_aug_jitter: true                 # Gaussian noise (models sensor noise)
+    pointnet_aug_scaling: false               # Disable scaling (preserves physical dimensions)
+    pointnet_aug_dropout: false               # Disable dropout (preserves edge continuity)
+    pointnet_rotation_angle: 0.1745           # 10 degrees in radians (π/18)
+    pointnet_jitter_sigma: 0.005              # Reduced from 0.01 for edge precision
+    pointnet_jitter_clip: 0.01                # Reduced from 0.02 for edge precision
+    
+    # PointNet Normalization parameters (must match task config)
+    pointnet_use_normalization: ${task.pointnet_norm_params.pointnet_use_normalization}
+    pointnet_norm_method: ${task.pointnet_norm_params.pointnet_norm_method}
+    pointnet_norm_per_sensor: ${task.pointnet_norm_params.pointnet_norm_per_sensor}
+    pointnet_norm_center_method: ${task.pointnet_norm_params.pointnet_norm_center_method}
+    pointnet_norm_scale_method: ${task.pointnet_norm_params.pointnet_norm_scale_method}
+    
+    # Feature aggregation
+    feature_aggregation: attention_pool_2d
+    downsample_ratio: 32
+    
+    # Other parameters
+    use_group_norm: true
+    image_size: 224
+    feature_dim: 768
+    
+    # Low-dimensional encoder parameters  
+    use_low_dim_encoder: true
+    low_dim_hidden_dims: [256, 512]
+    low_dim_output_dim: 256
+    low_dim_dropout_rate: 0.0
+    low_dim_use_batch_norm: true
+    low_dim_activation: relu
+
+  obs_as_global_cond: true
+  diffusion_step_embed_dim: 256
+  down_dims: [256, 512, 1024]
+  kernel_size: 5
+  n_groups: 8
+  cond_predict_scale: true
+
+ema:
+  _target_: diffusion_policy.model.diffusion.ema_model.EMAModel
+  update_after_step: 0
+  inv_gamma: 1.0
+  power: 0.75
+  min_value: 0.0
+  max_value: 0.9999
+
+dataloader:
+  batch_size: 64
+  num_workers: 8
+  shuffle: true
+  pin_memory: true
+  persistent_workers: false
+
+val_dataloader:
+  batch_size: 8
+  num_workers: 8
+  shuffle: false
+  pin_memory: true
+  persistent_workers: false
+
+optimizer:
+  _target_: torch.optim.AdamW
+  lr: 1.0e-4
+  betas: [0.95, 0.999]
+  eps: 1.0e-8
+  weight_decay: 1.0e-6
+
+training:
+  device: cuda:0
+  seed: 42
+  debug: false
+  resume: true
+  lr_scheduler: cosine
+  lr_warmup_steps: 500
+  num_epochs: 1000
+  gradient_accumulate_every: 1
+  use_ema: true
+  freeze_encoder: false
+  tqdm_interval_sec: 1.0
+  rollout_every: 50
+  checkpoint_every: 20  # Save checkpoint every 20 epochs
+  val_every: 50
+  sample_every: 5
+  max_train_steps: null
+  max_val_steps: null
+
+logging:
+  project: umi_vision_tactile_pc_unified
+  resume: true
+  mode: offline
+  name: ${now:%Y.%m.%d-%H.%M.%S}_${name}_${task_name}
+  tags: ["vision_tactile_pc", "unified", "${task_name}", "${exp_name}"]
+  id: null
+  group: null
+
+checkpoint:
+  topk:
+    monitor_key: train_loss
+    mode: min
+    k: 5
+    format_str: 'epoch={epoch:04d}-train_loss={train_loss:.3f}.ckpt'
+  save_last_ckpt: true
+  save_last_snapshot: false
+
+multi_run:
+  run_dir: data/outputs/${now:%Y.%m.%d}/${now:%H.%M.%S}_${name}_${task_name}
+  wandb_name_base: ${now:%Y.%m.%d-%H.%M.%S}_${name}_${task_name}
+
+hydra:
+  run:
+    dir: data/outputs/${now:%Y.%m.%d}/${now:%H.%M.%S}_${name}_${task_name}
+  job:
+    override_dirname: ${name}
+
